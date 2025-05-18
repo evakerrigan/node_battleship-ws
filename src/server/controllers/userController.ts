@@ -4,7 +4,7 @@ const regUser = (name: string, password: string) => {
   const answer = {
     type: "reg",
     data: {
-      name: "",
+      name: name,
       index: 0,
       error: false,
       errorText: "",
@@ -14,8 +14,8 @@ const regUser = (name: string, password: string) => {
 
   try {
     const user = userModel.addUser(name, password);
-
     answer.data.index = user.userId;
+    answer.data.name = user.name;
   } catch (error) {
     answer.data.error = true;
     answer.data.errorText = error.message;
