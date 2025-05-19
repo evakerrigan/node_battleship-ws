@@ -216,35 +216,51 @@ export const createServer = (port: number) => {
               const mapGame = createGameMap(enemyShips);
               printGameMap(mapGame);
 
-              const ship = enemyShips.find(
-                (ship) => ship.position.x === x && ship.position.y === y
-              );
-
-              console.log("enemyShips", {
-                enemyShips: JSON.stringify(enemyShips),
-                x,
-                y,
-              });
-
+              // const ship = enemyShips.find(
+              //   (ship) => ship.position.x === x && ship.position.y === y
+              // );
               let status: "miss" | "killed" | "shot" = "miss";
+              //let ship = {};
+              let shootDisabled = false;
 
-              if (ship) {
-                room.shipsState[anotherUser.index].push({
-                  x,
-                  y,
-                  status: "shot",
-                });
-                status = "killed";
-                console.log("КОРАБЛЬ ПОДБИТ", ship);
-              } else {
-                room.shipsState[anotherUser.index].push({
-                  x,
-                  y,
-                  status: "miss",
-                });
-                status = "miss";
-                console.log("МИМО");
+              for (let i = 0; i < mapGame.length; i++) {
+                for (let j = 0; j < mapGame[i].length; j++) {
+                  if (i === x && j === y) {
+                    if (mapGame[i][j] === 1) {
+                      mapGame[i][j] = 2;
+                      // Проверяем статус корабля после попадания
+                      // status = checkShipStatus(mapGame, x, y);
+                      status = "shot";
+                    } else if (mapGame[i][j] === 2) {
+                      shootDisabled = true;
+                    }
+                  }
+                }
               }
+
+              // console.log("enemyShips", {
+              //   enemyShips: JSON.stringify(enemyShips),
+              //   x,
+              //   y,
+              // });
+
+              // if (ship) {
+              //   room.shipsState[anotherUser.index].push({
+              //     x,
+              //     y,
+              //     status: "shot",
+              //   });
+              //   status = "killed";
+              //   console.log("КОРАБЛЬ ПОДБИТ", ship);
+              // } else {
+              //   room.shipsState[anotherUser.index].push({
+              //     x,
+              //     y,
+              //     status: "miss",
+              //   });
+              //   status = "miss";
+              //   console.log("МИМО");
+              // }
 
               ws.send(
                 JSON.stringify({
