@@ -21,6 +21,9 @@ export type Room = {
   shipsState?: {
     [key: string]: ShipsState[];
   };
+  gameMaps?: {
+    [key: string]: number[][];
+  };
 };
 
 let lastRoomId = 0;
@@ -32,7 +35,7 @@ export const roomModel = {
       roomId: ++lastRoomId,
       roomUsers: [user],
       turnUserId: user.index,
-      shipsState: {}
+      shipsState: {},
     };
     rooms.push(room);
     return room;

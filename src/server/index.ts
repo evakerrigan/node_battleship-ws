@@ -4,7 +4,7 @@ import { userController } from "./controllers/userController";
 import { MessageType, MessageUnion, Ship } from "../types";
 import { roomController } from "./controllers/roomController";
 import { shipsModel } from "./models/shipsModel";
-import { createGameMap, printGameMap } from "./utils/gameMap";
+import { checkWinnerMap, createGameMap, printGameMap } from "./utils/gameMap";
 // import { roomController } from "./controllers/roomController";
 
 // Добавляем Map для хранения соответствия между WebSocket и пользователями
@@ -139,11 +139,7 @@ export const createServer = (port: number) => {
             }
 
             const { gameId, ships } = message.data;
-
-            console.log("currentUser.index", currentUser.index);
-
             const room = roomController.getRoomById(gameId);
-
             const user = room?.roomUsers.find(
               (u) => u.index === currentUser.index
             );
@@ -152,13 +148,13 @@ export const createServer = (port: number) => {
               if (!room.ships) {
                 room.ships = {};
               }
+              if (!room.gameMaps) {
+                room.gameMaps = {};
+              }
               room.ships[currentUser.index] = ships;
               room.shipsState[currentUser.index] = [];
-
-              // Выводим карту при размещении кораблей
-              const mapGame = createGameMap(ships);
-              console.log(`\nКарта игрока ${currentUser.index}:`);
-              printGameMap(mapGame);
+              // Создаем начальную карту для игрока
+              room.gameMaps[currentUser.index] = createGameMap(ships);
             }
 
             // console.log("length", Object.keys(room.ships).length);
@@ -201,9 +197,7 @@ export const createServer = (port: number) => {
             break;
           case MessageType.ATTACK: {
             const { gameId, indexPlayer, x, y } = message.data;
-
             const room = roomController.getRoomById(gameId);
-
             const anotherUser = room.roomUsers.find(
               (user) => user.index !== indexPlayer
             );
@@ -212,31 +206,45 @@ export const createServer = (port: number) => {
             console.log("indexPlayer", indexPlayer);
 
             if (indexPlayer === room.turnUserId) {
-              const enemyShips = room.ships[anotherUser.index];
-              const mapGame = createGameMap(enemyShips);
-              printGameMap(mapGame);
-
-              // const ship = enemyShips.find(
-              //   (ship) => ship.position.x === x && ship.position.y === y
-              // );
+              // Используем сохраненную карту вместо создания новой
+              const mapGame = room.gameMaps[anotherUser.index];
               let status: "miss" | "killed" | "shot" = "miss";
-              //let ship = {};
               let shootDisabled = false;
 
-              for (let i = 0; i < mapGame.length; i++) {
-                for (let j = 0; j < mapGame[i].length; j++) {
-                  if (i === x && j === y) {
-                    if (mapGame[i][j] === 1) {
-                      mapGame[i][j] = 2;
-                      // Проверяем статус корабля после попадания
-                      // status = checkShipStatus(mapGame, x, y);
-                      status = "shot";
-                    } else if (mapGame[i][j] === 2) {
-                      shootDisabled = true;
-                    }
-                  }
+              if (mapGame[y][x] === 1) {
+                mapGame[y][x] = 2;
+                status = "shot";
+                console.log("КАРТА ПОСЛЕ АТАКИ: ");
+                printGameMap(mapGame, indexPlayer);
+                if (checkWinnerMap(mapGame)) {
+                  console.log("WINNER");
                 }
+              } else if (mapGame[y][x] === 2) {
+                shootDisabled = true;
               }
+
+              // for (let i = 0; i < mapGame.length; i++) {
+              //   for (let j = 0; j < mapGame[i].length; j++) {
+              //     if (i === x && j === y) {
+              //       if (mapGame[i][j] === 1) {
+              //         mapGame[i][j] = 2;
+              //         // Проверяем статус корабля после попадания
+              //         // status = checkShipStatus(mapGame, x, y);
+              //         status = "shot";
+
+              //         console.log("КАРТА ПОСЛЕ АТАКИ: ");
+              //         printGameMap(mapGame, indexPlayer);
+              //         if (checkWinnerMap(mapGame)) {
+              //           console.log("WINNER");
+              //           // room.winner = currentUser.index;
+              //           // room.isGameOver = true;
+              //         }
+              //       } else if (mapGame[i][j] === 2) {
+              //         shootDisabled = true;
+              //       }
+              //     }
+              //   }
+              // }
 
               // console.log("enemyShips", {
               //   enemyShips: JSON.stringify(enemyShips),
@@ -270,8 +278,7 @@ export const createServer = (port: number) => {
                       x,
                       y,
                     },
-                    currentPlayer:
-                      currentUser.index /* id of the player in the current game session */,
+                    currentPlayer: currentUser.index,
                     status: status,
                   }),
                 })
@@ -300,8 +307,6 @@ export const createServer = (port: number) => {
           }
 
           case "random_attack":
-            break;
-          case "turn":
             break;
           case "finish":
             break;
