@@ -154,6 +154,11 @@ export const createServer = (port: number) => {
               }
               room.ships[currentUser.index] = ships;
               room.shipsState[currentUser.index] = [];
+
+              // Выводим карту при размещении кораблей
+              const mapGame = createGameMap(ships);
+              console.log(`\nКарта игрока ${currentUser.index}:`);
+              printGameMap(mapGame);
             }
 
             // console.log("length", Object.keys(room.ships).length);
