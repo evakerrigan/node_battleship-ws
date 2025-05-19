@@ -142,10 +142,10 @@ export const createServer = (port: number) => {
             console.log("room.ships", room.ships);
 
             if (room.ships && Object.keys(room.ships).length === 2) {
-              // Отправляем данные каждому игроку отдельно
+              
               Object.entries(room.ships).forEach(
                 ([playerIndex, playerShips]) => {
-                  // Находим клиента по индексу игрока
+                 
                   wss.clients.forEach((client) => {
                     const user = wsToUser.get(client);
                     if (
