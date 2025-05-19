@@ -172,19 +172,19 @@ export const createServer = (port: number) => {
                       client.send(
                         JSON.stringify({
                           type: "start_game",
-                          data: {
-                            ships: JSON.stringify(playerShips),
+                          data: JSON.stringify({
+                            ships: playerShips,
                             currentPlayerIndex: Number(playerIndex),
-                          },
+                          }),
                           id: 0,
                         })
                       );
                       client.send(
                         JSON.stringify({
                           type: "turn",
-                          data: {
+                          data: JSON.stringify({
                             currentPlayer: room.turnUserId,
-                          },
+                          }),
                           id: 0,
                         })
                       );
@@ -264,9 +264,9 @@ export const createServer = (port: number) => {
                     client.send(
                       JSON.stringify({
                         type: "turn",
-                        data: {
+                        data: JSON.stringify({
                           currentPlayer: room.turnUserId,
-                        },
+                        }),
                         id: 0,
                       })
                     );
