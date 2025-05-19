@@ -218,6 +218,9 @@ export const createServer = (port: number) => {
                 printGameMap(mapGame, indexPlayer);
                 if (checkWinnerMap(mapGame)) {
                   console.log("WINNER");
+                  // Добавляем победу пользователю
+                  userController.addWin(currentUser.index);
+
                   wss.clients.forEach((client) => {
                     client.send(
                       JSON.stringify({
@@ -225,6 +228,18 @@ export const createServer = (port: number) => {
                         data: JSON.stringify({
                           winPlayer: currentUser.index,
                         }),
+                        id: 0,
+                      })
+                    );
+                  });
+
+                  // Обновляем статистику победителей
+                  const winners = userController.getWinners();
+                  wss.clients.forEach((client) => {
+                    client.send(
+                      JSON.stringify({
+                        type: "update_winners",
+                        data: JSON.stringify(winners),
                         id: 0,
                       })
                     );

@@ -2,6 +2,7 @@ export type User = {
   name: string;
   password: string;
   userId: number;
+  wins: number;
 };
 
 let lastId = 0;
@@ -13,7 +14,7 @@ export const userModel = {
     if (userModel.existUser(name, password)) {
       return userModel.getUser(name, password);
     } else if (userModel.hasUser(name)) {
-      console.log('ПАРОЛЬ НЕ ВЕРНЫЙ');
+      console.log("ПАРОЛЬ НЕ ВЕРНЫЙ");
       throw new Error("Password is not correct");
     }
 
@@ -23,6 +24,7 @@ export const userModel = {
       name: name,
       password: password,
       userId: lastId,
+      wins: 0,
     };
 
     users.push(user);
@@ -44,5 +46,16 @@ export const userModel = {
     return users.find(
       (user) => user.name === name && user.password === password
     );
+  },
+
+  addWin: (userId: number): void => {
+    const user = users.find((u) => u.userId === userId);
+    if (user) {
+      user.wins += 1;
+    }
+  },
+
+  getWinners: (): { name: string; wins: number }[] => {
+    return users.map(({ name, wins }) => ({ name, wins }));
   },
 };

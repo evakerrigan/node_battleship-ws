@@ -27,6 +27,16 @@ function regUser(name: string, password: string) {
   return answer;
 }
 
+function addWin(userId: number) {
+  userModel.addWin(userId);
+}
+
+function getWinners() {
+  return userModel.getWinners();
+}
+
 export const userController = {
   regUser,
+  addWin,
+  getWinners,
 };
