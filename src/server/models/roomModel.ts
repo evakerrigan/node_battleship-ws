@@ -5,11 +5,21 @@ export type RoomUser = {
   index: number;
 };
 
+interface ShipsState {
+  x: number;
+  y: number;
+  status: "miss" | "killed" | "shot";
+}
+
 export type Room = {
   roomId: number;
   roomUsers: RoomUser[];
   ships?: {
     [key: string]: Ship[];
+  };
+  turnUserId?: number;
+  shipsState?: {
+    [key: string]: ShipsState[];
   };
 };
 
@@ -21,6 +31,8 @@ export const roomModel = {
     const room: Room = {
       roomId: ++lastRoomId,
       roomUsers: [user],
+      turnUserId: user.index,
+      shipsState: {}
     };
     rooms.push(room);
     return room;

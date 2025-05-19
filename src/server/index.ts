@@ -103,7 +103,23 @@ export const createServer = (port: number) => {
 
             roomController.broadcastRooms(wss);
 
-            roomController.broadcastCreateGame(wss, currentUser);
+            // roomController.broadcastCreateGame(wss, currentUser);
+            wss.clients.forEach((client) => {
+              const user = wsToUser.get(client);
+              if (client.readyState === WebSocket.OPEN && user) {
+                client.send(
+                  JSON.stringify({
+                    type: "create_game",
+                    data: JSON.stringify({
+                      idGame: indexRoom,
+                      idPlayer: user.index,
+                    }),
+                    id: 0,
+                  })
+                );
+              }
+            });
+
             break;
 
           case MessageType.ADD_SHIPS:
@@ -136,16 +152,15 @@ export const createServer = (port: number) => {
                 room.ships = {};
               }
               room.ships[currentUser.index] = ships;
+              room.shipsState[currentUser.index] = [];
             }
 
             console.log("length", Object.keys(room.ships).length);
             console.log("room.ships", room.ships);
 
             if (room.ships && Object.keys(room.ships).length === 2) {
-              
               Object.entries(room.ships).forEach(
                 ([playerIndex, playerShips]) => {
-                 
                   wss.clients.forEach((client) => {
                     const user = wsToUser.get(client);
                     if (
@@ -163,16 +178,93 @@ export const createServer = (port: number) => {
                           id: 0,
                         })
                       );
+                      client.send(
+                        JSON.stringify({
+                          type: "turn",
+                          data: {
+                            currentPlayer: room.turnUserId,
+                          },
+                          id: 0,
+                        })
+                      );
                     }
                   });
                 }
               );
             }
             break;
-          case "start_game":
+          case MessageType.ATTACK: {
+            const { gameId, indexPlayer, x, y } = message.data;
+
+            const room = roomController.getRoomById(gameId);
+
+            const anotherUser = room.roomUsers.find(
+              (user) => user.index !== room.turnUserId
+            );
+
+            console.log("room.turnUserId", room.turnUserId);
+            console.log("indexPlayer", indexPlayer);
+
+            if (indexPlayer === room.turnUserId) {
+              const enemyShips = room.ships[anotherUser.index];
+
+              const ship = enemyShips.find(
+                (ship) => ship.position[0] === x && ship.position[1] === y
+              );
+
+              let status: "miss" | "killed" | "shot" = "miss";
+
+              if (ship) {
+                room.shipsState[anotherUser.index].push({
+                  x,
+                  y,
+                  status: "shot",
+                });
+                status = "shot";
+              } else {
+                room.shipsState[anotherUser.index].push({
+                  x,
+                  y,
+                  status: "miss",
+                });
+                status = "miss";
+              }
+
+              ws.send(
+                JSON.stringify({
+                  type: "attack",
+                  data: JSON.stringify({
+                    position: {
+                      x,
+                      y,
+                    },
+                    currentPlayer:
+                      currentUser.index /* id of the player in the current game session */,
+                    status: status,
+                  }),
+                })
+              );
+              if (room) {
+                if (anotherUser) {
+                  room.turnUserId = anotherUser.index;
+                  wss.clients.forEach((client) => {
+                    client.send(
+                      JSON.stringify({
+                        type: "turn",
+                        data: {
+                          currentPlayer: anotherUser.index,
+                        },
+                        id: 0,
+                      })
+                    );
+                  });
+                }
+              }
+            }
+
             break;
-          case "attack":
-            break;
+          }
+
           case "random_attack":
             break;
           case "turn":
