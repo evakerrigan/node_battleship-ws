@@ -6,6 +6,9 @@ import { roomController } from "./controllers/roomController";
 import { shipsModel } from "./models/shipsModel";
 // import { roomController } from "./controllers/roomController";
 
+// Добавляем Map для хранения соответствия между WebSocket и пользователями
+const wsToUser = new Map<WebSocket, { name: string; index: number }>();
+
 export const createServer = (port: number) => {
   const server = http.createServer(
     (req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -45,6 +48,8 @@ export const createServer = (port: number) => {
                 name: response.data.name!,
                 index: Number(response.data.index!),
               };
+              // Сохраняем соответствие между WebSocket и пользователем
+              wsToUser.set(ws, currentUser);
             }
 
             const responseData = {
@@ -126,8 +131,6 @@ export const createServer = (port: number) => {
               (u) => u.index === currentUser.index
             );
 
-            console.log("user", user.index);
-
             if (user) {
               if (!room.ships) {
                 room.ships = {};
@@ -139,10 +142,17 @@ export const createServer = (port: number) => {
             console.log("room.ships", room.ships);
 
             if (room.ships && Object.keys(room.ships).length === 2) {
+              // Отправляем данные каждому игроку отдельно
               Object.entries(room.ships).forEach(
                 ([playerIndex, playerShips]) => {
+                  // Находим клиента по индексу игрока
                   wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
+                    const user = wsToUser.get(client);
+                    if (
+                      client.readyState === WebSocket.OPEN &&
+                      user &&
+                      user.index === Number(playerIndex)
+                    ) {
                       client.send(
                         JSON.stringify({
                           type: "start_game",
@@ -158,7 +168,6 @@ export const createServer = (port: number) => {
                 }
               );
             }
-
             break;
           case "start_game":
             break;
@@ -210,7 +219,8 @@ export const createServer = (port: number) => {
     });
 
     ws.on("close", () => {
-      // Здесь можно добавить логику очистки при отключении пользователя
+      // Удаляем пользователя из Map при отключении
+      wsToUser.delete(ws);
     });
   });
 
