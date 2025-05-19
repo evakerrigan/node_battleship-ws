@@ -3,7 +3,6 @@ import http from "http";
 import { userController } from "./controllers/userController";
 import { MessageType, MessageUnion, Ship } from "../types";
 import { roomController } from "./controllers/roomController";
-import { shipsModel } from "./models/shipsModel";
 import {
   checkWinnerMap,
   createGameMap,
