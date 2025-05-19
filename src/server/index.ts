@@ -4,6 +4,7 @@ import { userController } from "./controllers/userController";
 import { MessageType, MessageUnion, Ship } from "../types";
 import { roomController } from "./controllers/roomController";
 import { shipsModel } from "./models/shipsModel";
+import { createGameMap, printGameMap } from "./utils/gameMap";
 // import { roomController } from "./controllers/roomController";
 
 // Добавляем Map для хранения соответствия между WebSocket и пользователями
@@ -155,8 +156,8 @@ export const createServer = (port: number) => {
               room.shipsState[currentUser.index] = [];
             }
 
-            console.log("length", Object.keys(room.ships).length);
-            console.log("room.ships", room.ships);
+            // console.log("length", Object.keys(room.ships).length);
+            // console.log("room.ships", room.ships);
 
             if (room.ships && Object.keys(room.ships).length === 2) {
               Object.entries(room.ships).forEach(
@@ -199,7 +200,7 @@ export const createServer = (port: number) => {
             const room = roomController.getRoomById(gameId);
 
             const anotherUser = room.roomUsers.find(
-              (user) => user.index !== room.turnUserId
+              (user) => user.index !== indexPlayer
             );
 
             console.log("room.turnUserId", room.turnUserId);
@@ -207,10 +208,18 @@ export const createServer = (port: number) => {
 
             if (indexPlayer === room.turnUserId) {
               const enemyShips = room.ships[anotherUser.index];
+              const mapGame = createGameMap(enemyShips);
+              printGameMap(mapGame);
 
               const ship = enemyShips.find(
-                (ship) => ship.position[0] === x && ship.position[1] === y
+                (ship) => ship.position.x === x && ship.position.y === y
               );
+
+              console.log("enemyShips", {
+                enemyShips: JSON.stringify(enemyShips),
+                x,
+                y,
+              });
 
               let status: "miss" | "killed" | "shot" = "miss";
 
@@ -220,7 +229,8 @@ export const createServer = (port: number) => {
                   y,
                   status: "shot",
                 });
-                status = "shot";
+                status = "killed";
+                console.log("КОРАБЛЬ ПОДБИТ", ship);
               } else {
                 room.shipsState[anotherUser.index].push({
                   x,
@@ -228,6 +238,7 @@ export const createServer = (port: number) => {
                   status: "miss",
                 });
                 status = "miss";
+                console.log("МИМО");
               }
 
               ws.send(
@@ -246,13 +257,15 @@ export const createServer = (port: number) => {
               );
               if (room) {
                 if (anotherUser) {
-                  room.turnUserId = anotherUser.index;
+                  room.turnUserId =
+                    status === "miss" ? anotherUser.index : currentUser.index;
+
                   wss.clients.forEach((client) => {
                     client.send(
                       JSON.stringify({
                         type: "turn",
                         data: {
-                          currentPlayer: anotherUser.index,
+                          currentPlayer: room.turnUserId,
                         },
                         id: 0,
                       })

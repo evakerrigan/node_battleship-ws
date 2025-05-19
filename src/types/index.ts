@@ -43,12 +43,11 @@ interface Room {
 type UpdateRoomData = Room[];
 
 export interface Ship {
-  position: [x: number, y: number];
+  position: { x: number; y: number };
   direction: boolean;
   length: number;
   type: "small" | "medium" | "large" | "huge";
 }
-
 
 interface AddShipsData {
   gameId: number | string;
@@ -69,7 +68,7 @@ interface AttackData {
 }
 
 interface AttackResponse {
-  position: [x: number, y: number];
+  position: { x: number; y: number };
   currentPlayer: number | string;
   status: "miss" | "killed" | "shot";
 }
