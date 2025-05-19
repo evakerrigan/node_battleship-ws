@@ -4,7 +4,7 @@ interface RegData {
 }
 
 interface RegResponse {
-  name: string,
+  name: string;
   index: number | string;
   error: boolean;
   errorText: string;
@@ -86,7 +86,9 @@ interface FinishData {
   winPlayer: number | string;
 }
 
-enum MessageType {
+interface SinglePlayData {}
+
+export enum MessageType {
   REG = "reg",
   AUTH = "auth",
   UPDATE_WINNERS = "update_winners",
@@ -100,6 +102,7 @@ enum MessageType {
   RANDOM_ATTACK = "random_attack",
   TURN = "turn",
   FINISH = "finish",
+  SINGLE_PLAY = "single_play",
 }
 
 interface MessageDataMap {
@@ -116,9 +119,31 @@ interface MessageDataMap {
   [MessageType.RANDOM_ATTACK]: RandomAttackData;
   [MessageType.TURN]: TurnData;
   [MessageType.FINISH]: FinishData;
+  [MessageType.SINGLE_PLAY]: SinglePlayData;
+}
+
+export enum ResponseMessageType {
+  REG = "reg",
+  ATTACK = "attack",
+}
+
+interface ResponseMessageDataMap {
+  [ResponseMessageType.REG]: RegResponse;
+  [ResponseMessageType.ATTACK]: AttackResponse;
 }
 
 interface Message<T extends MessageType> {
   type: T;
   data: MessageDataMap[T];
+  id: number;
 }
+
+export interface ResponseMessage<T extends ResponseMessageType> {
+  type: T;
+  data: ResponseMessageDataMap[T];
+  id: number;
+}
+
+export type MessageUnion = {
+  [K in MessageType]: Message<K>;
+}[MessageType];
