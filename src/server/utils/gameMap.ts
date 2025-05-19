@@ -108,6 +108,34 @@ export const printGameMap = (map: number[][], indexPlayer: number): void => {
 };
 
 export const checkWinnerMap = (map: number[][]) => {
-  const countTwo = map.reduce((acc, row) => acc + row.filter((cell) => cell === 2).length, 0);
-  return countTwo >= 3;
+  const countTwo = map.reduce(
+    (acc, row) => acc + row.filter((cell) => cell === 2).length,
+    0
+  );
+  return countTwo >= 20;
+};
+
+export const generateRandomAttack = (
+  map: number[][]
+): { x: number; y: number } => {
+  const availableCells: { x: number; y: number }[] = [];
+
+  // Собираем все доступные для атаки клетки (те, которые еще не были атакованы)
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x] !== 2) {
+        // 2 означает, что клетка уже была атакована
+        availableCells.push({ x, y });
+      }
+    }
+  }
+
+  // Если есть доступные клетки, выбираем случайную
+  if (availableCells.length > 0) {
+    const randomIndex = Math.floor(Math.random() * availableCells.length);
+    return availableCells[randomIndex];
+  }
+
+  // Если все клетки уже атакованы (не должно происходить в нормальной игре)
+  return { x: 0, y: 0 };
 };

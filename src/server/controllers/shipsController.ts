@@ -8,4 +8,3 @@ function addShips(ships: Ship[]) {
 export const shipsController = {
   addShips,
 };
-``;

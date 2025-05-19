@@ -1,11 +1,15 @@
-import { WebSocket, WebSocketServer } from "ws";
+import { WebSocket } from "ws";
 import http from "http";
 import { userController } from "./controllers/userController";
 import { MessageType, MessageUnion, Ship } from "../types";
 import { roomController } from "./controllers/roomController";
 import { shipsModel } from "./models/shipsModel";
-import { checkWinnerMap, createGameMap, printGameMap } from "./utils/gameMap";
-// import { roomController } from "./controllers/roomController";
+import {
+  checkWinnerMap,
+  createGameMap,
+  printGameMap,
+  generateRandomAttack,
+} from "./utils/gameMap";
 
 // Добавляем Map для хранения соответствия между WebSocket и пользователями
 const wsToUser = new Map<WebSocket, { name: string; index: number }>();
@@ -115,7 +119,6 @@ export const createServer = (port: number) => {
 
             roomController.broadcastRooms(wss);
 
-            // roomController.broadcastCreateGame(wss, currentUser);
             wss.clients.forEach((client) => {
               const user = wsToUser.get(client);
               if (client.readyState === WebSocket.OPEN && user) {
@@ -164,12 +167,9 @@ export const createServer = (port: number) => {
               }
               room.ships[currentUser.index] = ships;
               room.shipsState[currentUser.index] = [];
-              // Создаем начальную карту для игрока
+
               room.gameMaps[currentUser.index] = createGameMap(ships);
             }
-
-            // console.log("length", Object.keys(room.ships).length);
-            // console.log("room.ships", room.ships);
 
             if (room.ships && Object.keys(room.ships).length === 2) {
               Object.entries(room.ships).forEach(
@@ -217,7 +217,6 @@ export const createServer = (port: number) => {
             console.log("indexPlayer", indexPlayer);
 
             if (indexPlayer === room.turnUserId) {
-              // Используем сохраненную карту вместо создания новой
               const mapGame = room.gameMaps[anotherUser.index];
               let status: "miss" | "killed" | "shot" = "miss";
               let shootDisabled = false;
@@ -260,53 +259,6 @@ export const createServer = (port: number) => {
                 shootDisabled = true;
               }
 
-              // for (let i = 0; i < mapGame.length; i++) {
-              //   for (let j = 0; j < mapGame[i].length; j++) {
-              //     if (i === x && j === y) {
-              //       if (mapGame[i][j] === 1) {
-              //         mapGame[i][j] = 2;
-              //         // Проверяем статус корабля после попадания
-              //         // status = checkShipStatus(mapGame, x, y);
-              //         status = "shot";
-
-              //         console.log("КАРТА ПОСЛЕ АТАКИ: ");
-              //         printGameMap(mapGame, indexPlayer);
-              //         if (checkWinnerMap(mapGame)) {
-              //           console.log("WINNER");
-              //           // room.winner = currentUser.index;
-              //           // room.isGameOver = true;
-              //         }
-              //       } else if (mapGame[i][j] === 2) {
-              //         shootDisabled = true;
-              //       }
-              //     }
-              //   }
-              // }
-
-              // console.log("enemyShips", {
-              //   enemyShips: JSON.stringify(enemyShips),
-              //   x,
-              //   y,
-              // });
-
-              // if (ship) {
-              //   room.shipsState[anotherUser.index].push({
-              //     x,
-              //     y,
-              //     status: "shot",
-              //   });
-              //   status = "killed";
-              //   console.log("КОРАБЛЬ ПОДБИТ", ship);
-              // } else {
-              //   room.shipsState[anotherUser.index].push({
-              //     x,
-              //     y,
-              //     status: "miss",
-              //   });
-              //   status = "miss";
-              //   console.log("МИМО");
-              // }
-
               ws.send(
                 JSON.stringify({
                   type: "attack",
@@ -343,8 +295,91 @@ export const createServer = (port: number) => {
             break;
           }
 
-          case "random_attack":
+          case MessageType.RANDOM_ATTACK: {
+            const { gameId, indexPlayer } = message.data;
+            const room = roomController.getRoomById(gameId);
+            const anotherUser = room.roomUsers.find(
+              (user) => user.index !== indexPlayer
+            );
+
+            if (indexPlayer === room.turnUserId) {
+              const mapGame = room.gameMaps[anotherUser.index];
+              const { x, y } = generateRandomAttack(mapGame);
+              let status: "miss" | "killed" | "shot" = "miss";
+              let shootDisabled = false;
+
+              if (mapGame[y][x] === 1) {
+                mapGame[y][x] = 2;
+                status = "shot";
+                console.log("КАРТА ПОСЛЕ СЛУЧАЙНОЙ АТАКИ: ");
+                printGameMap(mapGame, indexPlayer);
+                if (checkWinnerMap(mapGame)) {
+                  console.log("WINNER");
+                  userController.addWin(currentUser.index);
+
+                  wss.clients.forEach((client) => {
+                    client.send(
+                      JSON.stringify({
+                        type: "finish",
+                        data: JSON.stringify({
+                          winPlayer: currentUser.index,
+                        }),
+                        id: 0,
+                      })
+                    );
+                  });
+
+                  const winners = userController.getWinners();
+                  wss.clients.forEach((client) => {
+                    client.send(
+                      JSON.stringify({
+                        type: "update_winners",
+                        data: JSON.stringify(winners),
+                        id: 0,
+                      })
+                    );
+                  });
+                }
+              } else if (mapGame[y][x] === 2) {
+                shootDisabled = true;
+              }
+
+              ws.send(
+                JSON.stringify({
+                  type: "attack",
+                  data: JSON.stringify({
+                    position: {
+                      x,
+                      y,
+                    },
+                    currentPlayer: currentUser.index,
+                    status: status,
+                  }),
+                })
+              );
+
+              if (room) {
+                if (anotherUser) {
+                  room.turnUserId =
+                    status === "miss" ? anotherUser.index : currentUser.index;
+
+                  wss.clients.forEach((client) => {
+                    client.send(
+                      JSON.stringify({
+                        type: "turn",
+                        data: JSON.stringify({
+                          currentPlayer: room.turnUserId,
+                        }),
+                        id: 0,
+                      })
+                    );
+                  });
+                }
+              }
+            }
             break;
+          }
+
           case "single_play": {
             const response = {
               id: 0,
