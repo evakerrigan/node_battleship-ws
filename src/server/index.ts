@@ -82,6 +82,17 @@ export const createServer = (port: number) => {
 
             roomController.broadcastRooms(wss);
 
+            const winners = userController.getWinners();
+            wss.clients.forEach((client) => {
+              client.send(
+                JSON.stringify({
+                  type: "update_winners",
+                  data: JSON.stringify(winners),
+                  id: 0,
+                })
+              );
+            });
+
             break;
 
           case MessageType.ADD_USER_TO_ROOM:
@@ -333,10 +344,6 @@ export const createServer = (port: number) => {
           }
 
           case "random_attack":
-            break;
-          case "finish":
-            break;
-          case "update_winners":
             break;
           case "single_play": {
             const response = {
