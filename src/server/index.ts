@@ -1,7 +1,9 @@
 import { WebSocket, WebSocketServer } from "ws";
 import http from "http";
 import { userController } from "./controllers/userController";
-import { MessageType, MessageUnion } from "../types";
+import { MessageType, MessageUnion, Ship } from "../types";
+import { roomController } from "./controllers/roomController";
+import { shipsModel } from "./models/shipsModel";
 // import { roomController } from "./controllers/roomController";
 
 export const createServer = (port: number) => {
@@ -44,61 +46,119 @@ export const createServer = (port: number) => {
                 index: Number(response.data.index!),
               };
             }
+
             const responseData = {
               ...response,
               data: JSON.stringify(response.data),
             };
             ws.send(JSON.stringify(responseData));
+
+            roomController.broadcastRooms(wss);
+
             break;
           }
 
-          case "create_room":
-          // if (!currentUser) {
-          //   ws.send(
-          //     JSON.stringify({
-          //       type: "error",
-          //       data: {
-          //         error: true,
-          //         errorText: "Пользователь не авторизован",
-          //       },
-          //       id: 0,
-          //     })
-          //   );
-          //   break;
-          // }
-          // roomController.createRoom(ws, { ...currentUser, ws }, wss);
-          // break;
+          case MessageType.CREATE_ROOM:
+            if (!currentUser) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  data: {
+                    error: true,
+                    errorText: "Пользователь не авторизован",
+                  },
+                  id: 0,
+                })
+              );
+              break;
+            }
+            roomController.createRoom(currentUser);
 
-          case "add_user_to_room":
-          // if (!currentUser) {
-          //   ws.send(
-          //     JSON.stringify({
-          //       type: "error",
-          //       data: {
-          //         error: true,
-          //         errorText: "Пользователь не авторизован",
-          //       },
-          //       id: 0,
-          //     })
-          //   );
-          //   break;
-          // }
-          // const { indexRoom } = data.data;
-          // roomController.addUserToRoom(
-          //   ws,
-          //   indexRoom,
-          //   { ...currentUser, ws },
-          //   wss
-          // );
-          // break;
+            roomController.broadcastRooms(wss);
 
-          case "auth":
             break;
-          case "create_game":
+
+          case MessageType.ADD_USER_TO_ROOM:
+            if (!currentUser) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  data: {
+                    error: true,
+                    errorText: "Пользователь не авторизован",
+                  },
+                  id: 0,
+                })
+              );
+              break;
+            }
+
+            const { indexRoom } = message.data;
+            roomController.addUserToRoom(indexRoom, currentUser);
+
+            roomController.broadcastRooms(wss);
+
+            roomController.broadcastCreateGame(wss, currentUser);
             break;
-          case "update_room":
-            break;
-          case "add_ships":
+
+          case MessageType.ADD_SHIPS:
+            if (!currentUser) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  data: {
+                    error: true,
+                    errorText: "Пользователь не авторизован",
+                  },
+                  id: 0,
+                })
+              );
+              break;
+            }
+
+            const { gameId, ships } = message.data;
+
+            console.log("currentUser.index", currentUser.index);
+
+            const room = roomController.getRoomById(gameId);
+
+            const user = room?.roomUsers.find(
+              (u) => u.index === currentUser.index
+            );
+
+            console.log("user", user.index);
+
+            if (user) {
+              if (!room.ships) {
+                room.ships = {};
+              }
+              room.ships[currentUser.index] = ships;
+            }
+
+            console.log("length", Object.keys(room.ships).length);
+            console.log("room.ships", room.ships);
+
+            if (room.ships && Object.keys(room.ships).length === 2) {
+              Object.entries(room.ships).forEach(
+                ([playerIndex, playerShips]) => {
+                  wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                      client.send(
+                        JSON.stringify({
+                          type: "start_game",
+                          data: {
+                            ships: JSON.stringify(playerShips),
+                            currentPlayerIndex: Number(playerIndex),
+                          },
+                          id: 0,
+                        })
+                      );
+                    }
+                  });
+                }
+              );
+            }
+
             break;
           case "start_game":
             break;
