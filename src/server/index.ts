@@ -218,6 +218,17 @@ export const createServer = (port: number) => {
                 printGameMap(mapGame, indexPlayer);
                 if (checkWinnerMap(mapGame)) {
                   console.log("WINNER");
+                  wss.clients.forEach((client) => {
+                    client.send(
+                      JSON.stringify({
+                        type: "finish",
+                        data: JSON.stringify({
+                          winPlayer: currentUser.index,
+                        }),
+                        id: 0,
+                      })
+                    );
+                  });
                 }
               } else if (mapGame[y][x] === 2) {
                 shootDisabled = true;
